@@ -1,7 +1,0 @@
-torch==2.5.1
-torchaudio==2.5.1
-torchvision==0.20.1
-nanobind==2.5.0
-scikit-build==0.18.1
-scikit-build-core==0.10.7
-
