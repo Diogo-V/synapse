@@ -20,8 +20,8 @@ set(FLAGS
 include_directories(${CMAKE_SOURCE_DIR}/synapse/include)
 
 # Add the source code and the test code
-file(GLOB SRC_FILES synapse/*.cpp)
-file(GLOB TEST_FILES tests/*.cpp)
+file(GLOB_RECURSE SRC_FILES ${CMAKE_SOURCE_DIR}/synapse/*.cpp)
+file(GLOB_RECURSE TEST_FILES ${CMAKE_SOURCE_DIR}/tests/*.cpp)
 
 # Create a static library for synapse
 add_library(synapse STATIC ${SRC_FILES})
