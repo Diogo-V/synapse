@@ -2,6 +2,7 @@
 #define SYNAPSE_TENSOR_H
 
 #include "ndarray.h"
+#include <string>
 #include <vector>
 
 namespace synapse {
@@ -10,6 +11,8 @@ public:
   NDArray data;
   Tensor(std::vector<float> data, std::vector<size_t> shape);
   ~Tensor();
+
+  const std::string to_string() const;
 };
 } // namespace synapse
 
