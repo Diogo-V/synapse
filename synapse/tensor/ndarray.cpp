@@ -1,5 +1,6 @@
 #include "ndarray.h"
 #include <cstddef>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -14,8 +15,8 @@ synapse::NDArray::NDArray(std::vector<float> data, std::vector<size_t> shape)
   // Computes strides where stride_i = shape_i * stride_i-1
   this->_strides = std::vector<size_t>(this->_ndim, 0);
   this->_strides[this->_ndim - 1] = 1;
-  for (size_t i = this->_ndim - 1; i <= 0; --i) {
-    this->_strides[i] = this->_shape[i] * this->_strides[i + 1];
+  for (size_t i = this->_ndim - 1; i > 0; --i) {
+    this->_strides[i - 1] = this->_shape[i] * this->_strides[i];
   }
 }
 
@@ -27,6 +28,10 @@ const std::vector<size_t> &synapse::NDArray::shape() const {
   return this->_shape;
 }
 
+const std::vector<size_t> &synapse::NDArray::strides() const {
+  return this->_strides;
+}
+
 std::vector<float> &synapse::NDArray::data() { return this->_data; }
 const std::vector<float> &synapse::NDArray::data() const { return this->_data; }
 size_t synapse::NDArray::ndim() const { return this->_ndim; }
@@ -35,61 +40,61 @@ size_t synapse::NDArray::size() const { return this->_size; }
 bool synapse::NDArray::is_contigous() {
   if (this->_ndim == 1)
     return true;
-  for (size_t i = 1; i < this->_ndim; i++) {
-    if (this->_strides[i] > this->_strides[i - 1])
+
+  for (size_t i = this->_ndim - 1; i > 0; --i) {
+    if (this->_strides[i - 1] != this->_shape[i] * this->_strides[i]) {
       return false;
+    }
   }
   return true;
 }
 
 const std::string synapse::NDArray::to_string() const {
+  if (this->size() == 0)
+    return "[]";
+
   std::ostringstream oss;
-  std::vector<size_t> indices(this->ndim(), 0);
 
-  for (size_t i = 0; i < this->size(); ++i) {
-    // Open brackets for new subarrays
-    for (size_t dim = 0; dim < this->ndim(); ++dim) {
-      if (indices[dim] == 0)
-        oss << "[";
+  // Recursive helper function.
+  // 'offset' is the starting index into _data.
+  // 'current_dim' indicates the dimension we are printing (0 is outermost).
+  // 'indent' is the string of spaces to prepend when starting a new line at
+  // this level.
+  std::function<void(size_t, size_t, const std::string &)> rec;
+  rec = [this, &oss, &rec](size_t offset, size_t current_dim,
+                           const std::string &indent) {
+    oss << "[";
+    // If we are at the last dimension, simply print the numbers.
+    if (current_dim == this->ndim() - 1) {
+      for (size_t i = 0; i < this->shape()[current_dim]; i++) {
+        if (i > 0)
+          oss << ", ";
+        oss << std::fixed << std::setprecision(3) << this->data()[offset + i];
+      }
+    } else {
+      // Compute the product of the remaining dimensions.
+      size_t subarray_size = 1;
+      for (size_t j = current_dim + 1; j < this->ndim(); j++) {
+        subarray_size *= this->shape()[j];
+      }
+      // Loop over the current dimension.
+      for (size_t i = 0; i < this->shape()[current_dim]; i++) {
+        if (i > 0)
+          oss << ",\n" << indent << " ";
+        // Recursively print the subarray.
+        rec(offset + i * subarray_size, current_dim + 1, indent + " ");
+      }
     }
+    oss << "]";
+  };
 
-    // Print value
-    if (i > 0)
-      oss << ", ";
-    oss << std::fixed << std::setprecision(3) << this->data()[i];
-
-    // Update indices and close brackets
-    for (size_t dim = this->ndim() - 1; dim >= 0; --dim) {
-      if (++indices[dim] < this->shape()[dim])
-        break;
-      indices[dim] = 0;
-      oss << "]"; // Close bracket at the end of each completed dimension
-      if (dim == 0)
-        break;
-      oss << "\n" + std::string(dim, ' '); // Indentation for readability
-    }
-  }
+  rec(0, 0, "");
   return oss.str();
 }
 
-// Allows accessing elements in the array similar to how python does it
-template <typename... Indices>
-const float &synapse::NDArray::operator()(Indices... indices) const {
-  static_assert(sizeof...(indices) > 0, "At least one index is required.");
-  std::vector<size_t> idx_vec{static_cast<size_t>(indices)...};
-  return this->_data[nd_index_to_pos(idx_vec, this->_strides)];
-}
-
-template <typename... Indices>
-float &synapse::NDArray::operator()(Indices... indices) {
-  static_assert(sizeof...(indices) > 0, "At least one index is required.");
-  std::vector<size_t> idx_vec{static_cast<size_t>(indices)...};
-  return this->_data[nd_index_to_pos(idx_vec, this->_strides)];
-}
-
 // Converts an N dimensional index into a position in the vector of data
-size_t nd_index_to_pos(std::vector<size_t> indices,
-                       std::vector<size_t> strides) {
+size_t synapse::nd_index_to_pos(std::vector<size_t> indices,
+                                std::vector<size_t> strides) {
   if (indices.size() != strides.size()) {
     throw std::invalid_argument(
         "Number of dimensions in indices and strides do not match.");
@@ -102,11 +107,12 @@ size_t nd_index_to_pos(std::vector<size_t> indices,
 }
 
 // Converts a position in a vector of data into an N dimensional index
-std::vector<size_t> pos_to_nd_index(size_t pos, std::vector<size_t> shape) {
+std::vector<size_t> synapse::pos_to_nd_index(size_t pos,
+                                             std::vector<size_t> shape) {
   std::vector<size_t> out(shape.size());
-  for (size_t i = shape[shape.size() - 1]; i > 0; i--) {
+  for (size_t i = shape.size(); i-- > 0;) {
     out[i] = pos % shape[i];
-    pos = static_cast<size_t>(pos / shape[i]);
+    pos /= shape[i];
   }
   return out;
 }
