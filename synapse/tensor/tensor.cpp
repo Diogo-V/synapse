@@ -4,7 +4,7 @@
 #include <vector>
 
 synapse::Tensor::Tensor(std::vector<float> data, std::vector<size_t> shape)
-    : data(synapse::NDArray(data, shape)) {
+    : synapse::NDArray(data, shape) {
   // Does not need to initialize anything else
 }
 
@@ -14,6 +14,6 @@ synapse::Tensor::~Tensor() {
 
 const std::string synapse::Tensor::to_string() const {
   std::string out{""};
-  out += this->data.to_string();
+  out += synapse::NDArray::to_string();
   return out;
 }

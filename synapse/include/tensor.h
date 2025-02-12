@@ -6,9 +6,8 @@
 #include <vector>
 
 namespace synapse {
-class Tensor {
+class Tensor : public NDArray {
 public:
-  NDArray data;
   Tensor(std::vector<float> data, std::vector<size_t> shape);
   ~Tensor();
 
