@@ -7,13 +7,13 @@
 #include <stdexcept>
 #include <vector>
 
-synapse::NDArray::NDArray(std::vector<float> data, std::vector<size_t> shape)
+synapse::NDArray::NDArray(std::vector<float> data, synapse::Shape shape)
     : _data(data), _shape(shape) {
   this->_size = data.size();
   this->_ndim = shape.size();
 
   // Computes strides where stride_i = shape_i * stride_i-1
-  this->_strides = std::vector<size_t>(this->_ndim, 0);
+  this->_strides = synapse::Strides(this->_ndim, 0);
   this->_strides[this->_ndim - 1] = 1;
   for (size_t i = this->_ndim - 1; i > 0; --i) {
     this->_strides[i - 1] = this->_shape[i] * this->_strides[i];
@@ -24,11 +24,9 @@ synapse::NDArray::~NDArray() {
   // No action required
 }
 
-const std::vector<size_t> &synapse::NDArray::shape() const {
-  return this->_shape;
-}
+const synapse::Shape &synapse::NDArray::shape() const { return this->_shape; }
 
-const std::vector<size_t> &synapse::NDArray::strides() const {
+const synapse::Strides &synapse::NDArray::strides() const {
   return this->_strides;
 }
 
@@ -93,8 +91,8 @@ const std::string synapse::NDArray::to_string() const {
 }
 
 // Converts an N dimensional index into a position in the vector of data
-size_t synapse::nd_index_to_pos(std::vector<size_t> indices,
-                                std::vector<size_t> strides) {
+size_t synapse::nd_index_to_pos(synapse::Shape indices,
+                                synapse::Strides strides) {
   if (indices.size() != strides.size()) {
     throw std::invalid_argument(
         "Number of dimensions in indices and strides do not match.");
@@ -107,9 +105,8 @@ size_t synapse::nd_index_to_pos(std::vector<size_t> indices,
 }
 
 // Converts a position in a vector of data into an N dimensional index
-std::vector<size_t> synapse::pos_to_nd_index(size_t pos,
-                                             std::vector<size_t> shape) {
-  std::vector<size_t> out(shape.size());
+synapse::Shape synapse::pos_to_nd_index(size_t pos, synapse::Shape shape) {
+  synapse::Shape out(shape.size());
   for (size_t i = shape.size(); i-- > 0;) {
     out[i] = pos % shape[i];
     pos /= shape[i];

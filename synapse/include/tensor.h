@@ -8,7 +8,7 @@
 namespace synapse {
 class Tensor : public NDArray {
 public:
-  Tensor(std::vector<float> data, std::vector<size_t> shape);
+  Tensor(std::vector<float> data, synapse::Shape shape);
   ~Tensor();
 
   const std::string to_string() const;

@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-synapse::Tensor::Tensor(std::vector<float> data, std::vector<size_t> shape)
+synapse::Tensor::Tensor(std::vector<float> data, synapse::Shape shape)
     : synapse::NDArray(data, shape) {
   // Does not need to initialize anything else
 }
