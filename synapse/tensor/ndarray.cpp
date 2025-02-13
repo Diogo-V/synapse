@@ -1,4 +1,5 @@
 #include "ndarray.h"
+#include <algorithm>
 #include <cstddef>
 #include <functional>
 #include <iomanip>
@@ -91,8 +92,8 @@ const std::string synapse::NDArray::to_string() const {
 }
 
 // Converts an N dimensional index into a position in the vector of data
-size_t synapse::nd_index_to_pos(synapse::Shape indices,
-                                synapse::Strides strides) {
+size_t synapse::nd_index_to_pos(const synapse::Shape &indices,
+                                const synapse::Strides &strides) {
   if (indices.size() != strides.size()) {
     throw std::invalid_argument(
         "Number of dimensions in indices and strides do not match.");
@@ -105,11 +106,48 @@ size_t synapse::nd_index_to_pos(synapse::Shape indices,
 }
 
 // Converts a position in a vector of data into an N dimensional index
-synapse::Shape synapse::pos_to_nd_index(size_t pos, synapse::Shape shape) {
+synapse::Shape synapse::pos_to_nd_index(size_t pos,
+                                        const synapse::Shape &shape) {
   synapse::Shape out(shape.size());
   for (size_t i = shape.size(); i-- > 0;) {
     out[i] = pos % shape[i];
     pos /= shape[i];
   }
+  return out;
+}
+
+synapse::Shape synapse::shape_broadcast(const synapse::Shape &s1,
+                                        const synapse::Shape &s2) {
+  size_t len1 = s1.size(), len2 = s2.size();
+  size_t out_size = std::max(len1, len2);
+  synapse::Shape out(out_size);
+
+  auto it_s1 = s1.crbegin();
+  auto it_s2 = s2.crbegin();
+  auto it_out = out.rbegin();
+
+  // Starts from the end and figures the out shape between the two by following
+  // the broadcasting rules:
+  // 1. Two shapes different than 1 have to be equal
+  // 2. If a shapes does not exist, is set to 1
+  // 3. 1 can be broadcasted to another higher size
+  // 4. 1's can be added to the left side of shapes to allow matching
+  for (size_t i = 0; i < out_size; ++i) {
+    size_t sz1 = (i < len1) ? *it_s1 : 1;
+    size_t sz2 = (i < len2) ? *it_s2 : 1;
+
+    if (sz1 != 1 && sz2 != 1 && sz1 != sz2) {
+      throw std::invalid_argument("Tensor shapes cannot be broadcasted.");
+    }
+
+    *it_out = std::max(sz1, sz2);
+
+    if (i < len1)
+      ++it_s1;
+    if (i < len2)
+      ++it_s2;
+    ++it_out;
+  }
+
   return out;
 }

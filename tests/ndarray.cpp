@@ -3,6 +3,7 @@
 #include <vector>
 
 class NDArrayTests : public ::testing::Test {};
+class ShapeBroadcastTests : public ::testing::Test {};
 
 TEST(NDArrayTest, Build1DArray) {
   std::vector<float> data{1.0, 2.0, 3.0, 4.0, 5.0, 6.0};
@@ -100,7 +101,7 @@ TEST(NDArrayTest, OutOfBoundsAccessThrows) {
   EXPECT_THROW(arr(0, 3), std::out_of_range);
 }
 
-TEST(NDArrayTest, NdIndexToPos) {
+TEST(ShapeBroadcastTests, NdIndexToPos) {
   // 1D Array
   synapse::Shape indices_1d = {3};
   synapse::Strides strides_1d = {1};
@@ -132,7 +133,7 @@ TEST(NDArrayTest, NdIndexToPos) {
   EXPECT_EQ(synapse::nd_index_to_pos(indices_single, strides_single), 0);
 }
 
-TEST(NDArrayTest, PosToNdIndex) {
+TEST(ShapeBroadcastTests, PosToNdIndex) {
   // 1D Array
   synapse::Shape shape_1d = {5};
   EXPECT_EQ(synapse::pos_to_nd_index(0, shape_1d), (synapse::Shape{0}));
@@ -171,4 +172,35 @@ TEST(NDArrayTest, PosToNdIndex) {
   EXPECT_EQ(synapse::pos_to_nd_index(0, {1}), (synapse::Shape{0}));
   EXPECT_EQ(synapse::pos_to_nd_index(0, {1, 1, 1, 1}),
             (synapse::Shape{0, 0, 0, 0}));
+}
+
+TEST(ShapeBroadcastTests, CompatibleShapes) {
+  EXPECT_EQ(synapse::shape_broadcast({3, 4}, {1, 4}), (synapse::Shape{3, 4}));
+  EXPECT_EQ(synapse::shape_broadcast({1, 4}, {3, 4}), (synapse::Shape{3, 4}));
+  EXPECT_EQ(synapse::shape_broadcast({3, 1}, {3, 4}), (synapse::Shape{3, 4}));
+  EXPECT_EQ(synapse::shape_broadcast({1, 1}, {3, 4}), (synapse::Shape{3, 4}));
+  EXPECT_EQ(synapse::shape_broadcast({5, 1, 4}, {1, 3, 4}),
+            (synapse::Shape{5, 3, 4}));
+}
+
+TEST(ShapeBroadcastTests, IncompatibleShapes) {
+  EXPECT_THROW(synapse::shape_broadcast({3, 4}, {2, 4}), std::invalid_argument);
+  EXPECT_THROW(synapse::shape_broadcast({3, 4}, {3, 5}), std::invalid_argument);
+  EXPECT_THROW(synapse::shape_broadcast({3, 3, 4}, {2, 3, 1}),
+               std::invalid_argument);
+}
+
+TEST(ShapeBroadcastTests, ScalarBroadcasting) {
+  EXPECT_EQ(synapse::shape_broadcast({}, {3, 4}), (synapse::Shape{3, 4}));
+  EXPECT_EQ(synapse::shape_broadcast({3, 4}, {}), (synapse::Shape{3, 4}));
+  EXPECT_EQ(synapse::shape_broadcast({}, {}), (synapse::Shape{}));
+}
+
+TEST(ShapeBroadcastTests, HigherDimensionalBroadcasting) {
+  EXPECT_EQ(synapse::shape_broadcast({8, 1, 6, 1}, {7, 1, 5}),
+            (synapse::Shape{8, 7, 6, 5}));
+  EXPECT_EQ(synapse::shape_broadcast({1, 2, 1}, {3, 1, 4}),
+            (synapse::Shape{3, 2, 4}));
+  EXPECT_EQ(synapse::shape_broadcast({3, 1, 2}, {2, 1}),
+            (synapse::Shape{3, 2, 2}));
 }

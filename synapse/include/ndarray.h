@@ -12,10 +12,14 @@ using Shape = std::vector<size_t>;
 using Strides = std::vector<size_t>;
 
 // Converts an N dimensional index into a position in the vector of data
-size_t nd_index_to_pos(Shape indices, Strides strides);
+size_t nd_index_to_pos(const Shape &indices, const Strides &strides);
 
 // Converts a position in a vector of data into an N dimensional index
-Shape pos_to_nd_index(size_t pos, Shape shape);
+Shape pos_to_nd_index(size_t pos, const Shape &shape);
+
+// Broadcasts two tensor shapes into a shape that is compatible. If no shape can
+// be derived, throws an error
+Shape shape_broadcast(const Shape &s1, const Shape &s2);
 
 class NDArray {
 public:
@@ -67,7 +71,7 @@ private:
       }
     }
 
-    return nd_index_to_pos(idx_vec, this->strides());
+    return synapse::nd_index_to_pos(idx_vec, this->strides());
   }
 };
 } // namespace synapse
